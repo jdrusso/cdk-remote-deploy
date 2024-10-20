@@ -1,6 +1,9 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 export class DeploymentStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -20,7 +23,7 @@ export class DeploymentStack extends cdk.Stack {
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.MICRO),
       machineImage: ec2.MachineImage.latestAmazonLinux2(),
       securityGroup,
-      keyName: 'docker-build-ec2-keypair',
+      keyName: process.env.EC2_KEYPAIR_NAME,
       vpcSubnets: {
         subnetType: ec2.SubnetType.PUBLIC,
       },

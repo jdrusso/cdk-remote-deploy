@@ -6,7 +6,7 @@ Deploying Docker images as part of CDK stacks can be slow, especially when pushi
 
 ### Step 1: Set Up an EC2 Key Pair
 1. Create a key pair in the AWS EC2 console.
-2. Update the `ec2.Instance` in `deployment-stack.ts` with your key pair's name.
+2. Copy `.env.sample` to `.env`, and update with your key pair's name.
 
 ### Step 2: Deploy the Deployment Stack
 Run the following command to deploy the stack:
