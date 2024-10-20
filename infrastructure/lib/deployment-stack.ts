@@ -6,14 +6,14 @@ export class DeploymentStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const vpc = new ec2.Vpc(this, 'RemoteBuildVpc', {maxAzs: 1});
+    const vpc = new ec2.Vpc(this, 'RemoteBuildVpc', { maxAzs: 1 });
 
     const securityGroup = new ec2.SecurityGroup(this, 'RemoteBuildSecurityGroup', {
       vpc,
       description: 'Allow SSH access',
-      allowAllOutbound: true
+      allowAllOutbound: true,
     });
-    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'Allow SSH access');;
+    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'Allow SSH access');
 
     const instance = new ec2.Instance(this, 'RemoteBuildInstance', {
       vpc,
@@ -23,7 +23,7 @@ export class DeploymentStack extends cdk.Stack {
       keyName: 'docker-build-ec2-keypair',
       vpcSubnets: {
         subnetType: ec2.SubnetType.PUBLIC,
-      }
+      },
     });
 
     instance.addUserData(
@@ -31,9 +31,9 @@ export class DeploymentStack extends cdk.Stack {
       `yum update -y`,
       `yum install -y docker`,
       `service docker start`,
-      `usermod -a -G docker ec2-user`,
+      `usermod -a -G docker ec2-user`
     );
-    
+
     new cdk.CfnOutput(this, 'RemoteBuildInstancePublicDNS', {
       value: instance.instancePublicDnsName,
       description: 'The public DNS of the EC2 instance',
