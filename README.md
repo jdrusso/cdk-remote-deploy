@@ -46,7 +46,7 @@ To deploy a CDK stack using the remote context:
    ```
 2. Deploy your stack:
    ```bash
-   cdk deploy InfrastructureStack
+   cdk deploy DemoStack
    ```
 Now, CDK will use the remote EC2 instance for the Docker build during deployment.
 
