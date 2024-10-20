@@ -1,92 +1,90 @@
-# CDK Remote Build
+# CDK Remote Docker Build
 
-I noticed that some of my CDK deployments for work services would take a very long time to push locally-built Docker images.
+Deploying Docker images as part of CDK stacks can be slow, especially when pushing locally-built images to AWS. This guide shows how to use an AWS EC2 instance to build Docker images remotely, speeding up deployment by keeping network traffic within AWS.
 
-This is an experiment to try having CDK build docker images in an AWS EC2 instance, to shift this network traffic into being all within AWS.
+## Quick Start
 
-## Usage
+### Step 1: Set Up an EC2 Key Pair
+1. Create a key pair in the AWS EC2 console.
+2. Update the `ec2.Instance` in `deployment-stack.ts` with your key pair's name.
 
-0. Create a key-pair in EC2, and update the `ec2.Instance` in `deployment-stack.ts` with the name of the key-pair.
-
-1. Deploy the `DeploymentStack`
+### Step 2: Deploy the Deployment Stack
+Run the following command to deploy the stack:
 ```bash
-$> cdk deploy DeploymentStack
+cdk deploy DeploymentStack
 ```
-This will output the public DNS name of your EC2 instance, referred to later as `$EC2_DNS_NAME`.
+This will output the public DNS name of your EC2 instance (`$EC2_DNS_NAME`). You'll need this for the next steps.
 
-2. Create a context for the remote build
+### Step 3: Create a Docker Context for Remote Builds
+Create a Docker context to use the EC2 instance as the build host:
 ```bash
-$> docker context create \
-    --docker host=ssh://$EC2_DNS_NAME \
-    --description="EC2 build host" \
-    ec2-build-host
-```
-
-3. Activate the remote context
-
-```bash
-$> docker context use ec2-build-host
+docker context create \
+  --docker host=ssh://$EC2_DNS_NAME \
+  --description="EC2 build host" \
+  ec2-build-host
 ```
 
-4. Build a container with the remote context
-
+### Step 4: Switch to the Remote Context
+Activate the newly created context:
 ```bash
-$> docker build .
+docker context use ec2-build-host
 ```
 
-Congratulations, you're now building Docker images on your remote EC2 instance!
-
-## CDK deployment with the remote context
-
-Having CDK use the remote build context is as easy as:
+### Step 5: Build the Docker Image Remotely
+Run the build command to build your Docker image on the EC2 instance:
 ```bash
-$> docker context use ec2-build-host
-$> cdk deploy InfrastructureStack
+docker build .
 ```
 
+You are now building Docker images on your remote EC2 instance!
+
+## CDK Deployment with Remote Context
+To deploy a CDK stack using the remote context:
+1. Switch to the remote Docker context:
+   ```bash
+   docker context use ec2-build-host
+   ```
+2. Deploy your stack:
+   ```bash
+   cdk deploy InfrastructureStack
+   ```
+Now, CDK will use the remote EC2 instance for the Docker build during deployment.
 
 ## Troubleshooting
 
-### Checking the remote build context is used
+### Verify Remote Build Context
+To confirm that the build is happening remotely:
+1. Stop the local Docker service:
+   ```bash
+   sudo service docker stop
+   ```
+2. Switch back to the default Docker context and try building:
+   ```bash
+   docker context use default
+   docker build .
+   ```
+   If Docker can't connect locally, you'll see an error.
+3. Switch back to the remote context and retry the build:
+   ```bash
+   docker context use ec2-build-host
+   docker build .
+   ```
+   You should see the usual Docker output, confirming the remote build.
 
-In case you want to confirm the build is correctly happening on the remote, I like to just disable the local Docker service, which will prevent building locally.
+### SSH Agent Configuration
+Ensure your SSH agent has access to the EC2 instance's key, as Docker uses the system SSH agent.
 
+**Note for WSL Users:** If using WSL with `ssh` aliased to `ssh.exe` for host-based SSH agents (e.g., 1Password), Docker will still use the WSL SSH agent. Add the EC2 key to your WSL SSH config.
+
+Test your SSH connection to the EC2 instance:
 ```bash
-$> sudo service docker stop 
- * Stopping Docker: docker
-
-# Only necessary if you switched to the remote context
-$> docker context use default
-
-$> cd cdk-remote-deploy
-
-$> docker build .
-Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
-
-$> docker context use ec2-build-host
-$> docker build .docker build .
-
-Sending build context to Docker daemon  7.168kB
-Step 1/4 : FROM node:14
-# ... The usual Docker output ...
-Successfully built ec1f33cd6eaa
+ssh ec2-user@$EC2_DNS_NAME
 ```
-
-### Configuring your SSH Agent
-
-You need to make sure your SSH agent has access to the SSH key for the EC2 instance. Note that Docker will use the system's SSH agent.
-
-**WSL Note:** If you're running something like WSL with `ssh` aliased to `ssh.exe` (the host's SSH agent) to take advantage of 1PW SSH agent forwarding, Docker will use the WSL SSH agent, NOT the aliased host agent! In that case, you'll need to add the ec2 key to the system SSH config, not 1PW.
-
-Test your SSH connection to the remote build host:
-    `$> ssh <EC2_DNS_NAME>`
-If this works, you should be good to go.
-
-**Note:** You may need to do `ssh ec2-user@$EC2_DNS_NAME`, depending on how you have SSH configured. Creating an entry in `~/.ssh/config` like
+To simplify SSH commands, add an entry to `~/.ssh/config`:
 ```ssh-config
 Host ec2-docker-remote
-        User ec2-user
-        IdentityFile /path/to/ec2/keyfile.pem
-        HostName $EC2_DNS_NAME
+  User ec2-user
+  IdentityFile /path/to/ec2/keyfile.pem
+  HostName $EC2_DNS_NAME
 ```
-is easiest IMO, and then you can just specify `ssh://ec2-docker-remote` everywhere instead of `ssh://$EC2_DNS_NAME`.
+You can now use `ssh://ec2-docker-remote` instead of typing the full DNS name each time.
