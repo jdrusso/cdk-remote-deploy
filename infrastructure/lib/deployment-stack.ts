@@ -34,16 +34,6 @@ export class DeploymentStack extends cdk.Stack {
       `service docker start`,
       `usermod -a -G docker ec2-user`,
     );
-
-    const role = new iam.Role(this, 'RemoteBuildInstanceRole', {
-      assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2FullAccess'),
-        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
-        iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchFullAccess'),
-      ],
-    });
-    instance.role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'));    
     
     new cdk.CfnOutput(this, 'RemoteBuildInstancePublicDNS', {
       value: instance.instancePublicDnsName,
