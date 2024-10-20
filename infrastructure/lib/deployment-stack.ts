@@ -33,9 +33,6 @@ export class DeploymentStack extends cdk.Stack {
       `yum install -y docker`,
       `service docker start`,
       `usermod -a -G docker ec2-user`,
-      `curl -sL https://rpm.nodesource.com/setup_14.x | bash -`,
-      `yum install -y nodejs`,
-      `npm install -g aws-cdk`,
     );
 
     const role = new iam.Role(this, 'RemoteBuildInstanceRole', {
