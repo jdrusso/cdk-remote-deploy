@@ -7,21 +7,16 @@ export class DeploymentStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Create a VPC
-    const vpc = new ec2.Vpc(this, 'MyVpc', {
-      maxAzs: 2 // Default is all AZs in the region
-    });
+    const vpc = new ec2.Vpc(this, 'RemoteBuildVpc', {});
 
-    // Create a security group
-    const securityGroup = new ec2.SecurityGroup(this, 'SecurityGroup', {
+    const securityGroup = new ec2.SecurityGroup(this, 'RemoteBuildSecurityGroup', {
       vpc,
       description: 'Allow SSH access',
       allowAllOutbound: true
     });
     securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'Allow SSH access');;
 
-    // Create an EC2 instance
-    const instance = new ec2.Instance(this, 'Instance', {
+    const instance = new ec2.Instance(this, 'RemoteBuildInstance', {
       vpc,
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.MICRO),
       machineImage: ec2.MachineImage.latestAmazonLinux2(),
@@ -32,7 +27,6 @@ export class DeploymentStack extends cdk.Stack {
       }
     });
 
-    // Add user data to install CDK and Docker
     instance.addUserData(
       `#!/bin/bash`,
       `yum update -y`,
@@ -44,8 +38,7 @@ export class DeploymentStack extends cdk.Stack {
       `npm install -g aws-cdk`,
     );
 
-    // Add IAM role to the instance
-    const role = new iam.Role(this, 'InstanceRole', {
+    const role = new iam.Role(this, 'RemoteBuildInstanceRole', {
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2FullAccess'),
@@ -53,10 +46,9 @@ export class DeploymentStack extends cdk.Stack {
         iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchFullAccess'),
       ],
     });
-
     instance.role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'));    
     
-    new cdk.CfnOutput(this, 'InstancePublicDNS', {
+    new cdk.CfnOutput(this, 'RemoteBuildInstancePublicDNS', {
       value: instance.instancePublicDnsName,
       description: 'The public DNS of the EC2 instance',
     });
