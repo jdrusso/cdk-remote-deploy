@@ -1,13 +1,12 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as iam from 'aws-cdk-lib/aws-iam';
 
 export class DeploymentStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const vpc = new ec2.Vpc(this, 'RemoteBuildVpc', {});
+    const vpc = new ec2.Vpc(this, 'RemoteBuildVpc', {maxAzs: 1});
 
     const securityGroup = new ec2.SecurityGroup(this, 'RemoteBuildSecurityGroup', {
       vpc,
