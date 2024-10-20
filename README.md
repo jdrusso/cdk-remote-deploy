@@ -4,56 +4,17 @@ I noticed that some of my CDK deployments for work services would take a very lo
 
 This is an experiment to try having CDK build docker images in an AWS EC2 instance, to shift this network traffic into being all within AWS.
 
-
 ## Usage
 
+0. Create a key-pair in EC2, and update the `ec2.Instance` in `deployment-stack.ts` with the name of the key-pair.
+
 1. Deploy the `DeploymentStack`
-    `cdk deploy DeploymentStack`
-
-### TCP-Specific
-
-2. Using the DNS name it spits out, try deploying with
-    `DOCKER_HOST=tcp://$EC2_DNS_NAME:2375 cdk deploy InfrastructureStack`
-    
-    This is a normal CDK deployment, but with the infrastructure stack built on the remote host.
-
-### SSH-Specific
-
-Using SSH to connect to the remote Docker context is more secure than TCP, and should be preferred.
-
-#### Configuring SSH Agent
-
-You need to make sure your SSH agent has access to the SSH key for the EC2 instance. Docker will use the system's SSH agent.
-
-**WSL Note:** If you're running something like WSL with `ssh` aliased to `ssh.exe` (the host's SSH agent) to take advantage of 1PW SSH agent forwarding, Docker will use the WSL SSH agent, NOT the aliased host agent! In that case, you'll need to add the ec2 key to the system SSH config, not 1PW.
-
-Test your SSH connection to the remote build host:
-    `$> ssh <EC2_DNS_NAME>`
-If this works, you should be good to go.
-
-**Note:** You may need to do `ssh ec2-user@$EC2_DNS_NAME`, depending on how you have SSH configured. Creating an entry in `~/.ssh/config` like
-```ssh-config
-Host ec2-docker-remote
-        User ec2-user
-        IdentityFile /path/to/ec2/keyfile.pem
-        HostName $EC2_DNS_NAME
-```
-is easiest IMO, and then you can just specify `ssh://ec2-docker-remote` everywhere instead of `ssh://$EC2_DNS_NAME`.
-
-#### Remote builds with SSH
-
-Similarly to TCP, this can be done with
 ```bash
-$> DOCKER_HOST=ssh://$EC2_DNS_NAME docker build . 
+$> cdk deploy DeploymentStack
 ```
+This will output the public DNS name of your EC2 instance, referred to later as `$EC2_DNS_NAME`.
 
-## Creating a Docker context
-
-Rather than manually providing `DOCKER_HOST`, you can create a Docker context that you can switch to. That makes it easy to swap in and out of remote/local contexts.
-
-
-1. Create a context for the remote build
-
+2. Create a context for the remote build
 ```bash
 $> docker context create \
     --docker host=ssh://$EC2_DNS_NAME \
@@ -61,27 +22,32 @@ $> docker context create \
     ec2-build-host
 ```
 
-2. Activate it
+3. Activate the remote context
 
 ```bash
 $> docker context use ec2-build-host
 ```
 
-3. Build with it
+4. Build a container with the remote context
 
 ```bash
 $> docker build .
 ```
+
+Congratulations, you're now building Docker images on your remote EC2 instance!
 
 ## CDK deployment with the remote context
 
 Having CDK use the remote build context is as easy as:
 ```bash
 $> docker context use ec2-build-host
-$> cdk deploy DeploymentStack
+$> cdk deploy InfrastructureStack
 ```
-    
-## Checking the remote build context is used
+
+
+## Troubleshooting
+
+### Checking the remote build context is used
 
 In case you want to confirm the build is correctly happening on the remote, I like to just disable the local Docker service, which will prevent building locally.
 
@@ -105,3 +71,22 @@ Step 1/4 : FROM node:14
 # ... The usual Docker output ...
 Successfully built ec1f33cd6eaa
 ```
+
+### Configuring your SSH Agent
+
+You need to make sure your SSH agent has access to the SSH key for the EC2 instance. Note that Docker will use the system's SSH agent.
+
+**WSL Note:** If you're running something like WSL with `ssh` aliased to `ssh.exe` (the host's SSH agent) to take advantage of 1PW SSH agent forwarding, Docker will use the WSL SSH agent, NOT the aliased host agent! In that case, you'll need to add the ec2 key to the system SSH config, not 1PW.
+
+Test your SSH connection to the remote build host:
+    `$> ssh <EC2_DNS_NAME>`
+If this works, you should be good to go.
+
+**Note:** You may need to do `ssh ec2-user@$EC2_DNS_NAME`, depending on how you have SSH configured. Creating an entry in `~/.ssh/config` like
+```ssh-config
+Host ec2-docker-remote
+        User ec2-user
+        IdentityFile /path/to/ec2/keyfile.pem
+        HostName $EC2_DNS_NAME
+```
+is easiest IMO, and then you can just specify `ssh://ec2-docker-remote` everywhere instead of `ssh://$EC2_DNS_NAME`.

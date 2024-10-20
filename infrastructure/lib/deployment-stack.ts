@@ -15,12 +15,10 @@ export class DeploymentStack extends cdk.Stack {
     // Create a security group
     const securityGroup = new ec2.SecurityGroup(this, 'SecurityGroup', {
       vpc,
-      description: 'Allow SSH and HTTP access',
+      description: 'Allow SSH access',
       allowAllOutbound: true
     });
-    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'Allow SSH access');
-    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80), 'Allow HTTP access');
-    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(2375), 'Allow Docker remote access');
+    securityGroup.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22), 'Allow SSH access');;
 
     // Create an EC2 instance
     const instance = new ec2.Instance(this, 'Instance', {
@@ -44,10 +42,6 @@ export class DeploymentStack extends cdk.Stack {
       `curl -sL https://rpm.nodesource.com/setup_14.x | bash -`,
       `yum install -y nodejs`,
       `npm install -g aws-cdk`,
-      // Edit Docker service file to listen on TCP
-      `sed -i 's/ExecStart=\\/usr\\/bin\\/dockerd -H fd:\\/\\//ExecStart=\\/usr\\/bin\\/dockerd -H fd:\\/\\/ -H tcp:\\/\\/0.0.0.0:2375/' /lib/systemd/system/docker.service`,
-      `systemctl daemon-reload`,
-      `service docker restart`
     );
 
     // Add IAM role to the instance
