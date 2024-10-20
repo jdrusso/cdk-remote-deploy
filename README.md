@@ -8,10 +8,10 @@ Deploying Docker images as part of CDK stacks can be slow, especially when pushi
 1. Create a key pair in the AWS EC2 console.
 2. Copy `.env.sample` to `.env`, and update with your key pair's name.
 
-### Step 2: Deploy the Deployment Stack
+### Step 2: Deploy the Remote Build Stack
 Run the following command to deploy the stack:
 ```bash
-cdk deploy DeploymentStack
+cdk deploy RemoteBuildStack
 ```
 This will output the public DNS name of your EC2 instance (`$EC2_DNS_NAME`). You'll need this for the next steps.
 
@@ -88,3 +88,5 @@ Host ec2-docker-remote
   HostName $EC2_DNS_NAME
 ```
 You can now use `ssh://ec2-docker-remote` instead of typing the full DNS name each time.
+
+Note that if you redeploy the remote build EC2 instance, the IP will change, and you'll need to update this config.
